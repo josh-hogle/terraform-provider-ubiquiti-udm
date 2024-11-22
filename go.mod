@@ -3,7 +3,7 @@ module go.joshhogle.dev/terraform-provider-ubiquiti-udm
 go 1.23
 
 require (
-	github.com/go-resty/resty/v2 v2.16.1
+	github.com/go-resty/resty/v2 v2.16.2
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/hashicorp/terraform-plugin-framework v1.13.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0

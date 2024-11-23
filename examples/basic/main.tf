@@ -13,9 +13,9 @@ provider "udm" {
   ignore_untrusted_ssl_certificate = var.udm_uses_untrusted_ssl_cert
 }
 
-data "udm_static_dns_entries" "all" {}
+data "udm_static_dns_records" "all" {}
 
-data "udm_static_dns_entries" "filtered" {
+data "udm_static_dns_records" "filtered" {
   filter = {
     enabled = "true"
     record_type = "NS"
@@ -23,7 +23,16 @@ data "udm_static_dns_entries" "filtered" {
   }
 }
 
-#resource "udm_static_dns" "k8s_dev_cluster" {
+data "udm_client_devices" "all" {}
+
+data "udm_client_devices" "filtered" {
+  filter = {
+    use_fixed_ip = true
+    local_dns_record_enabled = true
+  }
+}
+
+#resource "udm_static_dns_record" "k8s_dev_cluster" {
 #  enabled = true
 #  key = "k8s-dev-cluster.internal.acmelabs.dev"
 #  record_type = "A"
@@ -31,10 +40,21 @@ data "udm_static_dns_entries" "filtered" {
 #  ttl = 300
 #}
 
-output "static_dns_entries" {
-  value = data.udm_static_dns_entries.all
+#resource "udm_client_device" "test_device" {
+#  mac_address = "12:12:12:12:12:21"
+#  use_fixed_ip = true
+#  fixed_ip = "192.168.16.221"
+#}
+
+output "static_dns_records" {
+  value = data.udm_static_dns_records.all
 }
 
-output "static_dns_filtered_entries" {
-  value = data.udm_static_dns_entries.filtered
+output "filtered_static_dns_records" {
+  value = data.udm_static_dns_records.filtered
+}
+
+
+output "filtered_client_devices" {
+  value = data.udm_client_devices.filtered
 }

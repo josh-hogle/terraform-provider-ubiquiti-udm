@@ -26,7 +26,7 @@ website/node_modules
 *.iml
 *.auto.tfvars
 .tfvars
-
+.auth.json
 website/vendor
 
 # Test exclusions

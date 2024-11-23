@@ -2,7 +2,7 @@
 
 This repository is a custom Terraform provider for working with Ubiquiti Dream Machine (UDM) devices.
 
-Please note that this project is in a very early stage and subject to frequent changes.  As of today, the APIs for UDM devices is unpublished by Ubiquiti, so much of the work in this provider was done through reverse engineering by making changes through the UI and inspecting calls via Chrome Developer Tools.
+Please note that this project is in a very early stage and subject to frequent changes.  As of today, the API for UDM devices is unpublished by Ubiquiti, so much of the work in this provider was done through reverse engineering by making changes through the UI and inspecting calls via Chrome Developer Tools.
 
 This provider is currently in active development and is **NOT** ready for production use.
 

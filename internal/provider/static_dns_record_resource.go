@@ -16,22 +16,22 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource                = &staticDNSResource{}
-	_ resource.ResourceWithConfigure   = &staticDNSResource{}
-	_ resource.ResourceWithImportState = &staticDNSResource{}
+	_ resource.Resource                = &staticDNSRecordResource{}
+	_ resource.ResourceWithConfigure   = &staticDNSRecordResource{}
+	_ resource.ResourceWithImportState = &staticDNSRecordResource{}
 )
 
-// NewStaticDNSResource is a helper function to simplify the provider implementation.
-func NewStaticDNSResource() resource.Resource {
-	return &staticDNSResource{}
+// NewStaticDNSRecordResource is a helper function to simplify the provider implementation.
+func NewStaticDNSRecordResource() resource.Resource {
+	return &staticDNSRecordResource{}
 }
 
-// staticDNSResource is the resource implementation.
-type staticDNSResource struct {
+// staticDNSRecordResource is the resource implementation.
+type staticDNSRecordResource struct {
 	client *api.Client
 }
 
-type staticDNSEntryResourceModel struct {
+type staticDNSRecordResourceModel struct {
 	ID         types.String `tfsdk:"id"`
 	Enabled    types.Bool   `tfsdk:"enabled"`
 	Key        types.String `tfsdk:"key"`
@@ -43,7 +43,7 @@ type staticDNSEntryResourceModel struct {
 	Weight     types.Int32  `tfsdk:"weight"`
 }
 
-func (r *staticDNSResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *staticDNSRecordResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Add a nil check when handling ProviderData because Terraform
 	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
@@ -63,12 +63,12 @@ func (r *staticDNSResource) Configure(_ context.Context, req resource.ConfigureR
 }
 
 // Metadata returns the resource type name.
-func (r *staticDNSResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_static_dns"
+func (r *staticDNSRecordResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_static_dns_record"
 }
 
 // Schema defines the schema for the resource.
-func (r *staticDNSResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *staticDNSRecordResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -111,9 +111,9 @@ func (r *staticDNSResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 }
 
 // Create creates the resource and sets the initial Terraform state.
-func (r *staticDNSResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *staticDNSRecordResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// retrieve values from plan
-	var plan staticDNSEntryResourceModel
+	var plan staticDNSRecordResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -121,47 +121,47 @@ func (r *staticDNSResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	// generate API request body from plan
-	entry := api.StaticDNSEntry{
+	record := api.StaticDNSRecord{
 		Key:        plan.Key.ValueString(),
 		RecordType: plan.RecordType.ValueString(),
 		Value:      plan.Value.ValueString(),
 	}
 	if !plan.Enabled.IsNull() {
-		entry.Enabled = plan.Enabled.ValueBool()
+		record.Enabled = plan.Enabled.ValueBool()
 	}
 	if !plan.Port.IsNull() {
-		entry.Port = int(plan.Port.ValueInt32())
+		record.Port = int(plan.Port.ValueInt32())
 	}
 	if !plan.Priority.IsNull() {
-		entry.Priority = int(plan.Priority.ValueInt32())
+		record.Priority = int(plan.Priority.ValueInt32())
 	}
 	if !plan.TTL.IsNull() {
-		entry.TTL = int(plan.TTL.ValueInt32())
+		record.TTL = int(plan.TTL.ValueInt32())
 	}
 	if !plan.Weight.IsNull() {
-		entry.Weight = int(plan.Weight.ValueInt32())
+		record.Weight = int(plan.Weight.ValueInt32())
 	}
 
-	// create the entry
-	createdEntry, err := r.client.CreateStaticDNSEntry(ctx, entry)
+	// create the record
+	createdRecord, err := r.client.CreateStaticDNSRecord(ctx, record)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"UDM API: Failed to Create Static DNS Entry",
-			fmt.Sprintf("Failed to create static DNS entry using the UDM API:\n\t%s", err.Error()),
+			"UDM API: Failed to Create Static DNS Record",
+			fmt.Sprintf("Failed to create static DNS record using the UDM API:\n\t%s", err.Error()),
 		)
 		return
 	}
 
 	// map the response to the model
-	plan.ID = types.StringValue(createdEntry.ID)
-	plan.Enabled = types.BoolValue(createdEntry.Enabled)
-	plan.Key = types.StringValue(createdEntry.Key)
-	plan.Port = types.Int32Value(int32(createdEntry.Port))
-	plan.Priority = types.Int32Value(int32(createdEntry.Priority))
-	plan.RecordType = types.StringValue(createdEntry.RecordType)
-	plan.TTL = types.Int32Value(int32(createdEntry.TTL))
-	plan.Value = types.StringValue(createdEntry.Value)
-	plan.Weight = types.Int32Value(int32(createdEntry.Weight))
+	plan.ID = types.StringValue(createdRecord.ID)
+	plan.Enabled = types.BoolValue(createdRecord.Enabled)
+	plan.Key = types.StringValue(createdRecord.Key)
+	plan.Port = types.Int32Value(int32(createdRecord.Port))
+	plan.Priority = types.Int32Value(int32(createdRecord.Priority))
+	plan.RecordType = types.StringValue(createdRecord.RecordType)
+	plan.TTL = types.Int32Value(int32(createdRecord.TTL))
+	plan.Value = types.StringValue(createdRecord.Value)
+	plan.Weight = types.Int32Value(int32(createdRecord.Weight))
 
 	// save state with the populated data
 	diags = resp.State.Set(ctx, plan)
@@ -172,9 +172,9 @@ func (r *staticDNSResource) Create(ctx context.Context, req resource.CreateReque
 }
 
 // Read refreshes the Terraform state with the latest data.
-func (r *staticDNSResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *staticDNSRecordResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// retrieve the current state
-	var state staticDNSEntryResourceModel
+	var state staticDNSRecordResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -182,25 +182,25 @@ func (r *staticDNSResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	// refresh value from the API
-	entry, err := r.client.GetStaticDNSEntry(ctx, state.ID.ValueString())
+	record, err := r.client.GetStaticDNSRecord(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"UDM API: Failed to Retrieve Static DNS Entry",
-			fmt.Sprintf("Failed to retrieve the static DNS entry with the ID '%s': %s",
+			"UDM API: Failed to Retrieve Static DNS Record",
+			fmt.Sprintf("Failed to retrieve the static DNS record with the ID '%s': %s",
 				state.ID.ValueString(), err.Error()),
 		)
 		return
 	}
 
 	// update the state
-	state.Enabled = types.BoolValue(entry.Enabled)
-	state.Key = types.StringValue(entry.Key)
-	state.Port = types.Int32Value(int32(entry.Port))
-	state.Priority = types.Int32Value(int32(entry.Priority))
-	state.RecordType = types.StringValue(entry.RecordType)
-	state.TTL = types.Int32Value(int32(entry.TTL))
-	state.Value = types.StringValue(entry.Value)
-	state.Weight = types.Int32Value(int32(entry.Weight))
+	state.Enabled = types.BoolValue(record.Enabled)
+	state.Key = types.StringValue(record.Key)
+	state.Port = types.Int32Value(int32(record.Port))
+	state.Priority = types.Int32Value(int32(record.Priority))
+	state.RecordType = types.StringValue(record.RecordType)
+	state.TTL = types.Int32Value(int32(record.TTL))
+	state.Value = types.StringValue(record.Value)
+	state.Weight = types.Int32Value(int32(record.Weight))
 
 	// set the refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -211,9 +211,9 @@ func (r *staticDNSResource) Read(ctx context.Context, req resource.ReadRequest, 
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
-func (r *staticDNSResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *staticDNSRecordResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// retrieve values from plan
-	var plan staticDNSEntryResourceModel
+	var plan staticDNSRecordResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -221,47 +221,47 @@ func (r *staticDNSResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	// generate API request body from plan
-	entry := api.StaticDNSEntry{
+	record := api.StaticDNSRecord{
 		Key:        plan.Key.ValueString(),
 		RecordType: plan.RecordType.ValueString(),
 		Value:      plan.Value.ValueString(),
 	}
 	if !plan.Enabled.IsNull() {
-		entry.Enabled = plan.Enabled.ValueBool()
+		record.Enabled = plan.Enabled.ValueBool()
 	}
 	if !plan.Port.IsNull() {
-		entry.Port = int(plan.Port.ValueInt32())
+		record.Port = int(plan.Port.ValueInt32())
 	}
 	if !plan.Priority.IsNull() {
-		entry.Priority = int(plan.Priority.ValueInt32())
+		record.Priority = int(plan.Priority.ValueInt32())
 	}
 	if !plan.TTL.IsNull() {
-		entry.TTL = int(plan.TTL.ValueInt32())
+		record.TTL = int(plan.TTL.ValueInt32())
 	}
 	if !plan.Weight.IsNull() {
-		entry.Weight = int(plan.Weight.ValueInt32())
+		record.Weight = int(plan.Weight.ValueInt32())
 	}
 
-	// create the entry
-	updatedEntry, err := r.client.UpdateStaticDNSEntry(ctx, plan.ID.ValueString(), entry)
+	// create the record
+	updatedRecord, err := r.client.UpdateStaticDNSRecord(ctx, plan.ID.ValueString(), record)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"UDM API: Failed to Update Static DNS Entry",
-			fmt.Sprintf("Failed to update static DNS entry using the UDM API:\n\t%s", err.Error()),
+			"UDM API: Failed to Update Static DNS Record",
+			fmt.Sprintf("Failed to update static DNS record using the UDM API:\n\t%s", err.Error()),
 		)
 		return
 	}
 
 	// map the response to the model
-	plan.ID = types.StringValue(updatedEntry.ID)
-	plan.Enabled = types.BoolValue(updatedEntry.Enabled)
-	plan.Key = types.StringValue(updatedEntry.Key)
-	plan.Port = types.Int32Value(int32(updatedEntry.Port))
-	plan.Priority = types.Int32Value(int32(updatedEntry.Priority))
-	plan.RecordType = types.StringValue(updatedEntry.RecordType)
-	plan.TTL = types.Int32Value(int32(updatedEntry.TTL))
-	plan.Value = types.StringValue(updatedEntry.Value)
-	plan.Weight = types.Int32Value(int32(updatedEntry.Weight))
+	plan.ID = types.StringValue(updatedRecord.ID)
+	plan.Enabled = types.BoolValue(updatedRecord.Enabled)
+	plan.Key = types.StringValue(updatedRecord.Key)
+	plan.Port = types.Int32Value(int32(updatedRecord.Port))
+	plan.Priority = types.Int32Value(int32(updatedRecord.Priority))
+	plan.RecordType = types.StringValue(updatedRecord.RecordType)
+	plan.TTL = types.Int32Value(int32(updatedRecord.TTL))
+	plan.Value = types.StringValue(updatedRecord.Value)
+	plan.Weight = types.Int32Value(int32(updatedRecord.Weight))
 
 	// save state with the populated data
 	diags = resp.State.Set(ctx, plan)
@@ -272,25 +272,25 @@ func (r *staticDNSResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
-func (r *staticDNSResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *staticDNSRecordResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// retrieve the current state
-	var state staticDNSEntryResourceModel
+	var state staticDNSRecordResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// delete the entry
-	if err := r.client.DeleteStaticDNSEntry(ctx, state.ID.ValueString()); err != nil {
+	// delete the record
+	if err := r.client.DeleteStaticDNSRecord(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
-			"UDM API: Failed to Update Static DNS Entry",
-			fmt.Sprintf("Failed to update static DNS entry using the UDM API:\n\t%s", err.Error()),
+			"UDM API: Failed to Update Static DNS Record",
+			fmt.Sprintf("Failed to update static DNS record using the UDM API:\n\t%s", err.Error()),
 		)
 		return
 	}
 }
 
-func (r *staticDNSResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *staticDNSRecordResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

@@ -7,26 +7,27 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	"go.joshhogle.dev/terraform-provider-ubiquiti-udm/internal/api"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ datasource.DataSource              = &staticDNSEntriesDataSource{}
-	_ datasource.DataSourceWithConfigure = &staticDNSEntriesDataSource{}
+	_ datasource.DataSource              = &staticDNSRecordsDataSource{}
+	_ datasource.DataSourceWithConfigure = &staticDNSRecordsDataSource{}
 )
 
-func NewStaticDNSEntriesDataSource() datasource.DataSource {
-	return &staticDNSEntriesDataSource{}
+func NewStaticDNSRecordsDataSource() datasource.DataSource {
+	return &staticDNSRecordsDataSource{}
 }
 
-type staticDNSEntriesDataSource struct {
+type staticDNSRecordsDataSource struct {
 	client *api.Client
 }
 
-type staticDNSEntriesDataSourceModel struct {
-	Entries []staticDNSEntryDataSourceModel `tfsdk:"entries"`
-	Filter  *staticDNSFilterDataSourceModel `tfsdk:"filter"`
+type staticDNSRecordsDataSourceModel struct {
+	Records []staticDNSRecordDataSourceModel `tfsdk:"records"`
+	Filter  *staticDNSFilterDataSourceModel  `tfsdk:"filter"`
 }
 
 type staticDNSFilterDataSourceModel struct {
@@ -37,7 +38,7 @@ type staticDNSFilterDataSourceModel struct {
 	Value      types.String `tfsdk:"value"`
 }
 
-type staticDNSEntryDataSourceModel struct {
+type staticDNSRecordDataSourceModel struct {
 	ID         types.String `tfsdk:"id"`
 	Enabled    types.Bool   `tfsdk:"enabled"`
 	Key        types.String `tfsdk:"key"`
@@ -49,7 +50,9 @@ type staticDNSEntryDataSourceModel struct {
 	Weight     types.Int32  `tfsdk:"weight"`
 }
 
-func (d *staticDNSEntriesDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *staticDNSRecordsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest,
+	resp *datasource.ConfigureResponse) {
+
 	// Add a nil check when handling ProviderData because Terraform
 	// sets that data after it calls the ConfigureProvider RPC.
 	if req.ProviderData == nil {
@@ -60,7 +63,8 @@ func (d *staticDNSEntriesDataSource) Configure(_ context.Context, req datasource
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *api.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *api.Client, got: %T. Please report this issue to the provider developers.",
+				req.ProviderData),
 		)
 		return
 	}
@@ -68,14 +72,18 @@ func (d *staticDNSEntriesDataSource) Configure(_ context.Context, req datasource
 	d.client = client
 }
 
-func (d *staticDNSEntriesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_static_dns_entries"
+func (d *staticDNSRecordsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest,
+	resp *datasource.MetadataResponse) {
+
+	resp.TypeName = req.ProviderTypeName + "_static_dns_records"
 }
 
-func (d *staticDNSEntriesDataSource) Schema(_ context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *staticDNSRecordsDataSource) Schema(_ context.Context, req datasource.SchemaRequest,
+	resp *datasource.SchemaResponse) {
+
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"entries": schema.ListNestedAttribute{
+			"records": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -133,70 +141,73 @@ func (d *staticDNSEntriesDataSource) Schema(_ context.Context, req datasource.Sc
 	}
 }
 
-func (d *staticDNSEntriesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *staticDNSRecordsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
+	resp *datasource.ReadResponse) {
+
 	// read configuration
-	var config staticDNSEntriesDataSourceModel
+	var config staticDNSRecordsDataSourceModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// query for all entries
-	entries, err := d.client.GetStaticDNSEntries(ctx)
+	// query for all records
+	records, err := d.client.GetStaticDNSRecords(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"UDM API: Failed to Retrieve Static DNS Entries",
-			fmt.Sprintf("Failed to retrieve static DNS entries from the UDM API:\n\t%s", err.Error()),
+			"UDM API: Failed to Retrieve Static DNS Records",
+			fmt.Sprintf("Failed to retrieve static DNS records from the UDM API:\n\t%s", err.Error()),
 		)
 		return
 	}
 
 	// map the response to the model
-	state := staticDNSEntriesDataSourceModel{
-		Entries: []staticDNSEntryDataSourceModel{},
+	state := staticDNSRecordsDataSourceModel{
+		Records: []staticDNSRecordDataSourceModel{},
 		Filter:  config.Filter,
 	}
-	for _, entry := range entries {
+	for _, record := range records {
 		if config.Filter != nil {
-			// filter (en/dis)abled entries
-			if !config.Filter.Enabled.IsNull() && entry.Enabled != config.Filter.Enabled.ValueBool() {
+			// filter non-matching enabled status records
+			if !config.Filter.Enabled.IsNull() && record.Enabled != config.Filter.Enabled.ValueBool() {
 				continue
 
 			}
+
 			// filter non-matching IDs
-			if !config.Filter.ID.IsNull() && entry.ID != config.Filter.ID.ValueString() {
+			if !config.Filter.ID.IsNull() && record.ID != config.Filter.ID.ValueString() {
 				continue
 			}
 
 			// filter non-matching keys
-			if !config.Filter.Key.IsNull() && entry.Key != config.Filter.Key.ValueString() {
+			if !config.Filter.Key.IsNull() && record.Key != config.Filter.Key.ValueString() {
 				continue
 			}
 
 			// filter non-matching record types
-			if !config.Filter.RecordType.IsNull() && entry.RecordType != config.Filter.RecordType.ValueString() {
+			if !config.Filter.RecordType.IsNull() && record.RecordType != config.Filter.RecordType.ValueString() {
 				continue
 			}
 
 			// filter non-matching values
-			if !config.Filter.Value.IsNull() && entry.Value != config.Filter.Value.ValueString() {
+			if !config.Filter.Value.IsNull() && record.Value != config.Filter.Value.ValueString() {
 				continue
 			}
 		}
 
-		entryState := staticDNSEntryDataSourceModel{
-			ID:         types.StringValue(entry.ID),
-			Enabled:    types.BoolValue(entry.Enabled),
-			Key:        types.StringValue(entry.Key),
-			Port:       types.Int32Value(int32(entry.Port)),
-			Priority:   types.Int32Value(int32(entry.Priority)),
-			RecordType: types.StringValue(entry.RecordType),
-			TTL:        types.Int32Value(int32(entry.TTL)),
-			Value:      types.StringValue(entry.Value),
-			Weight:     types.Int32Value(int32(entry.Weight)),
+		recordState := staticDNSRecordDataSourceModel{
+			ID:         types.StringValue(record.ID),
+			Enabled:    types.BoolValue(record.Enabled),
+			Key:        types.StringValue(record.Key),
+			Port:       types.Int32Value(int32(record.Port)),
+			Priority:   types.Int32Value(int32(record.Priority)),
+			RecordType: types.StringValue(record.RecordType),
+			TTL:        types.Int32Value(int32(record.TTL)),
+			Value:      types.StringValue(record.Value),
+			Weight:     types.Int32Value(int32(record.Weight)),
 		}
-		state.Entries = append(state.Entries, entryState)
+		state.Records = append(state.Records, recordState)
 	}
 
 	// set state

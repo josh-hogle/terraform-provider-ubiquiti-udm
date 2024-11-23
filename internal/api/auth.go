@@ -80,8 +80,8 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		if statusCode == 200 {
 			break
 		}
-		if apiResponseError.Code == "AUTHENTICATION_FAILED_LIMIT_REACHED" && attempt < 6 {
-			time.Sleep(5 * time.Second)
+		if apiResponseError.Code == "AUTHENTICATION_FAILED_LIMIT_REACHED" && attempt < 30 {
+			time.Sleep(1 * time.Second)
 			continue
 		}
 		tflog.Error(ctx, "failed to authenticate user with UDM server", map[string]any{

@@ -7,38 +7,43 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-type createStaticDNSEntriesResponseSuccess StaticDNSEntry
+type createStaticDNSRecordsResponseSuccess StaticDNSRecord
 
-type createStaticDNSEntriesResponseError struct {
+type createStaticDNSRecordsResponseError struct {
 	Code      string `json:"code"`
 	Details   any    `json:"details"`
 	ErrorCode int    `json:"errorCode"`
 	Message   string `json:"message"`
 }
 
-type deleteStaticDNSEntriesResponseSuccess struct{}
+type deleteStaticDNSRecordsResponseSuccess struct{}
 
-type deleteStaticDNSEntriesResponseError struct {
+type deleteStaticDNSRecordsResponseError struct {
 	Code      string `json:"code"`
 	Details   any    `json:"details"`
 	ErrorCode int    `json:"errorCode"`
 	Message   string `json:"message"`
 }
 
-type getStaticDNSEntriesResponseSuccess []StaticDNSEntry
+type getStaticDNSRecordsResponseSuccess []StaticDNSRecord
 
-type getStaticDNSEntriesResponseError struct{}
-
-type updateStaticDNSEntriesResponseSuccess StaticDNSEntry
-
-type updateStaticDNSEntriesResponseError struct {
+type getStaticDNSRecordsResponseError struct {
 	Code      string `json:"code"`
 	Details   any    `json:"details"`
 	ErrorCode int    `json:"errorCode"`
 	Message   string `json:"message"`
 }
 
-type StaticDNSEntry struct {
+type updateStaticDNSRecordsResponseSuccess StaticDNSRecord
+
+type updateStaticDNSRecordsResponseError struct {
+	Code      string `json:"code"`
+	Details   any    `json:"details"`
+	ErrorCode int    `json:"errorCode"`
+	Message   string `json:"message"`
+}
+
+type StaticDNSRecord struct {
 	ID         string `json:"_id,omitempty"`
 	Enabled    bool   `json:"enabled"`
 	Key        string `json:"key"`
@@ -50,23 +55,23 @@ type StaticDNSEntry struct {
 	Weight     int    `json:"weight,omitempty"`
 }
 
-func (c *Client) CreateStaticDNSEntry(ctx context.Context, entry StaticDNSEntry) (StaticDNSEntry, error) {
+func (c *Client) CreateStaticDNSRecord(ctx context.Context, record StaticDNSRecord) (StaticDNSRecord, error) {
 	ctx = c.addClientContext(ctx)
-	ctx = tflog.SetField(ctx, "record_type", entry.RecordType)
-	ctx = tflog.SetField(ctx, "key", entry.Key)
-	ctx = tflog.SetField(ctx, "value", entry.Value)
-	ctx = tflog.SetField(ctx, "ttl", entry.TTL)
+	ctx = tflog.SetField(ctx, "record_type", record.RecordType)
+	ctx = tflog.SetField(ctx, "key", record.Key)
+	ctx = tflog.SetField(ctx, "value", record.Value)
+	ctx = tflog.SetField(ctx, "ttl", record.TTL)
 
 	// POST /proxy/network/v2/api/site/:site/static-dns
 	url, req := c.newAuthenticatedRequest(ctx, fmt.Sprintf("/proxy/network/v2/api/site/%s/static-dns", c.site))
-	tflog.Debug(ctx, "creating static DNS entry", map[string]any{
-		"url":   url,
-		"entry": entry,
+	tflog.Debug(ctx, "creating static DNS record", map[string]any{
+		"url":    url,
+		"record": record,
 	})
-	apiResponseSuccess := createStaticDNSEntriesResponseSuccess{}
-	apiResponseError := createStaticDNSEntriesResponseError{}
+	apiResponseSuccess := createStaticDNSRecordsResponseSuccess{}
+	apiResponseError := createStaticDNSRecordsResponseError{}
 	resp, err := req.
-		SetBody(entry).
+		SetBody(record).
 		SetResult(&apiResponseSuccess).
 		SetError(&apiResponseError).
 		Post(url)
@@ -74,35 +79,34 @@ func (c *Client) CreateStaticDNSEntry(ctx context.Context, entry StaticDNSEntry)
 		tflog.Error(ctx, "failed to execute POST request", map[string]any{
 			"error_message": err.Error(),
 		})
-		return StaticDNSEntry{}, err
+		return StaticDNSRecord{}, err
 	}
 	statusCode, _, _ := c.logResponse(ctx, resp)
 
 	// if a non-200 error was returned by the API, something went wrong
 	if statusCode != 200 {
-		tflog.Error(ctx, "failed to create static DNS entry", map[string]any{
+		tflog.Error(ctx, "failed to create static DNS record", map[string]any{
 			"message":    apiResponseError.Message,
 			"error_code": apiResponseError.ErrorCode,
 			"code":       apiResponseError.Code,
 			"details":    apiResponseError.Details,
 		})
-		return StaticDNSEntry{}, fmt.Errorf("failed to create static DNS entry: %s", apiResponseError.Message)
+		return StaticDNSRecord{}, fmt.Errorf("failed to create static DNS record: %s", apiResponseError.Message)
 	}
-	return StaticDNSEntry(apiResponseSuccess), nil
+	return StaticDNSRecord(apiResponseSuccess), nil
 }
 
-func (c *Client) DeleteStaticDNSEntry(ctx context.Context, id string) error {
+func (c *Client) DeleteStaticDNSRecord(ctx context.Context, id string) error {
 	ctx = c.addClientContext(ctx)
 
 	// DELETE /proxy/network/v2/api/site/:site/static-dns/:id
 	url, req := c.newAuthenticatedRequest(ctx, fmt.Sprintf("/proxy/network/v2/api/site/%s/static-dns/%s", c.site, id))
-	tflog.Debug(ctx, "deleting static DNS entry", map[string]any{
+	tflog.Debug(ctx, "deleting static DNS record", map[string]any{
 		"url": url,
 	})
-	apiResponseSuccess := deleteStaticDNSEntriesResponseSuccess{}
-	apiResponseError := deleteStaticDNSEntriesResponseError{}
+	apiResponseSuccess := deleteStaticDNSRecordsResponseSuccess{}
+	apiResponseError := deleteStaticDNSRecordsResponseError{}
 	resp, err := req.
-		SetBody("{}").
 		SetResult(&apiResponseSuccess).
 		SetError(&apiResponseError).
 		Delete(url)
@@ -116,27 +120,27 @@ func (c *Client) DeleteStaticDNSEntry(ctx context.Context, id string) error {
 
 	// if a non-200 error was returned by the API, something went wrong
 	if statusCode != 200 {
-		tflog.Error(ctx, "failed to delete static DNS entry", map[string]any{
+		tflog.Error(ctx, "failed to delete static DNS record", map[string]any{
 			"message":    apiResponseError.Message,
 			"error_code": apiResponseError.ErrorCode,
 			"code":       apiResponseError.Code,
 			"details":    apiResponseError.Details,
 		})
-		return fmt.Errorf("failed to delete static DNS entry: %s", apiResponseError.Message)
+		return fmt.Errorf("failed to delete static DNS record: %s", apiResponseError.Message)
 	}
 	return nil
 }
 
-func (c *Client) GetStaticDNSEntries(ctx context.Context) ([]StaticDNSEntry, error) {
+func (c *Client) GetStaticDNSRecords(ctx context.Context) ([]StaticDNSRecord, error) {
 	ctx = c.addClientContext(ctx)
 
 	// GET /proxy/network/v2/api/site/:site/static-dns
 	url, req := c.newAuthenticatedRequest(ctx, fmt.Sprintf("/proxy/network/v2/api/site/%s/static-dns", c.site))
-	tflog.Debug(ctx, "retrieving static DNS entries", map[string]any{
+	tflog.Debug(ctx, "retrieving static DNS records", map[string]any{
 		"url": url,
 	})
-	apiResponseSuccess := getStaticDNSEntriesResponseSuccess{}
-	apiResponseError := getStaticDNSEntriesResponseError{}
+	apiResponseSuccess := getStaticDNSRecordsResponseSuccess{}
+	apiResponseError := getStaticDNSRecordsResponseError{}
 	resp, err := req.
 		SetResult(&apiResponseSuccess).
 		SetError(&apiResponseError).
@@ -151,52 +155,54 @@ func (c *Client) GetStaticDNSEntries(ctx context.Context) ([]StaticDNSEntry, err
 
 	// if a non-200 error was returned by the API, something went wrong
 	if statusCode != 200 {
-		tflog.Error(ctx, "failed to retrieve static DNS entries", map[string]any{
+		tflog.Error(ctx, "failed to retrieve static DNS records", map[string]any{
 			"body": resp.Body(),
 		})
-		return nil, fmt.Errorf("failed to retrieve static DNS entries")
+		return nil, fmt.Errorf("failed to retrieve static DNS records")
 	}
-	return []StaticDNSEntry(apiResponseSuccess), nil
+	return []StaticDNSRecord(apiResponseSuccess), nil
 }
 
-func (c *Client) GetStaticDNSEntry(ctx context.Context, id string) (StaticDNSEntry, error) {
+func (c *Client) GetStaticDNSRecord(ctx context.Context, id string) (StaticDNSRecord, error) {
 	ctx = tflog.SetField(ctx, "id", id)
-	entries, err := c.GetStaticDNSEntries(ctx)
+	records, err := c.GetStaticDNSRecords(ctx)
 	if err != nil {
-		return StaticDNSEntry{}, err
+		return StaticDNSRecord{}, err
 	}
 	ctx = c.addClientContext(ctx)
 
 	// find the ID in question
-	tflog.Debug(ctx, "searching for static DNS entry")
-	for _, entry := range entries {
-		if entry.ID == id {
-			tflog.Debug(ctx, "static DNS entry was located", map[string]any{"entry": entry})
-			return entry, nil
+	tflog.Debug(ctx, "searching for static DNS record")
+	for _, record := range records {
+		if record.ID == id {
+			tflog.Debug(ctx, "static DNS record was located", map[string]any{"record": record})
+			return record, nil
 		}
 	}
-	tflog.Warn(ctx, "static DNS entry not found")
-	return StaticDNSEntry{}, fmt.Errorf("no static DNS entry found with an ID of '%s'", id)
+	tflog.Warn(ctx, "static DNS record not found")
+	return StaticDNSRecord{}, fmt.Errorf("no static DNS record found with an ID of '%s'", id)
 }
 
-func (c *Client) UpdateStaticDNSEntry(ctx context.Context, id string, entry StaticDNSEntry) (StaticDNSEntry, error) {
+func (c *Client) UpdateStaticDNSRecord(ctx context.Context, id string, record StaticDNSRecord) (
+	StaticDNSRecord, error) {
+
 	ctx = c.addClientContext(ctx)
 	ctx = tflog.SetField(ctx, "id", id)
-	ctx = tflog.SetField(ctx, "record_type", entry.RecordType)
-	ctx = tflog.SetField(ctx, "key", entry.Key)
-	ctx = tflog.SetField(ctx, "value", entry.Value)
-	ctx = tflog.SetField(ctx, "ttl", entry.TTL)
+	ctx = tflog.SetField(ctx, "record_type", record.RecordType)
+	ctx = tflog.SetField(ctx, "key", record.Key)
+	ctx = tflog.SetField(ctx, "value", record.Value)
+	ctx = tflog.SetField(ctx, "ttl", record.TTL)
 
 	// PUT /proxy/network/v2/api/site/:site/static-dns/:id
 	url, req := c.newAuthenticatedRequest(ctx, fmt.Sprintf("/proxy/network/v2/api/site/%s/static-dns/%s", c.site, id))
-	tflog.Debug(ctx, "updating static DNS entry", map[string]any{
-		"url":   url,
-		"entry": entry,
+	tflog.Debug(ctx, "updating static DNS record", map[string]any{
+		"url":    url,
+		"record": record,
 	})
-	apiResponseSuccess := updateStaticDNSEntriesResponseSuccess{}
-	apiResponseError := updateStaticDNSEntriesResponseError{}
+	apiResponseSuccess := updateStaticDNSRecordsResponseSuccess{}
+	apiResponseError := updateStaticDNSRecordsResponseError{}
 	resp, err := req.
-		SetBody(entry).
+		SetBody(record).
 		SetResult(&apiResponseSuccess).
 		SetError(&apiResponseError).
 		Put(url)
@@ -204,19 +210,19 @@ func (c *Client) UpdateStaticDNSEntry(ctx context.Context, id string, entry Stat
 		tflog.Error(ctx, "failed to execute PUT request", map[string]any{
 			"error_message": err.Error(),
 		})
-		return StaticDNSEntry{}, err
+		return StaticDNSRecord{}, err
 	}
 	statusCode, _, _ := c.logResponse(ctx, resp)
 
 	// if a non-200 error was returned by the API, something went wrong
 	if statusCode != 200 {
-		tflog.Error(ctx, "failed to update static DNS entry", map[string]any{
+		tflog.Error(ctx, "failed to update static DNS record", map[string]any{
 			"message":    apiResponseError.Message,
 			"error_code": apiResponseError.ErrorCode,
 			"code":       apiResponseError.Code,
 			"details":    apiResponseError.Details,
 		})
-		return StaticDNSEntry{}, fmt.Errorf("failed to update static DNS entry: %s", apiResponseError.Message)
+		return StaticDNSRecord{}, fmt.Errorf("failed to update static DNS record: %s", apiResponseError.Message)
 	}
-	return StaticDNSEntry(apiResponseSuccess), nil
+	return StaticDNSRecord(apiResponseSuccess), nil
 }

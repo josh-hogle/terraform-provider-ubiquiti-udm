@@ -132,7 +132,7 @@ func (p *udmProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("username"),
 			"Unknown UDM API Username",
 			"The provider cannot create the UDM API client as there is an unknown configuration value for "+
-				"the HashiCups API username. Either target apply the source of the value first, set the value "+
+				"the UDM API username. Either target apply the source of the value first, set the value "+
 				"statically in the configuration, or use a variable in the configuration.",
 		)
 	}
